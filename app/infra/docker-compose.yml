@@ -1,0 +1,129 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: flowquest
+      POSTGRES_USER: flowquest
+      POSTGRES_PASSWORD: flowquest_dev
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - flowquest
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U flowquest"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - flowquest
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MinIO S3 Storage
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - flowquest
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI Backend
+  server:
+    build:
+      context: ../server
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://flowquest:flowquest_dev@postgres:5432/flowquest
+      - REDIS_URL=redis://redis:6379
+      - S3_ENDPOINT=http://minio:9000
+      - S3_ACCESS_KEY=minio
+      - S3_SECRET_KEY=minio123
+      - S3_BUCKET=flowquest
+      - JWT_SECRET=dev_jwt_secret_change_in_production
+      - CORS_ALLOWLIST=http://localhost:3000,http://localhost:3001
+      - SAFE_MODE=true
+      - HQ_RENDER_ENABLED=false
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - flowquest
+    volumes:
+      - ../server:/app
+      - /tmp/flowquest:/tmp/flowquest
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Next.js Frontend
+  web:
+    build:
+      context: ../web
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - server
+    networks:
+      - flowquest
+    volumes:
+      - ../web:/app
+      - /app/node_modules
+      - /app/.next
+
+  # Optional: Coqui TTS Server
+  coqui-xtts:
+    image: ghcr.io/coqui-ai/tts:latest
+    profiles: ["tts"]
+    ports:
+      - "3000:3000"
+    environment:
+      - MODEL_NAME=tts_models/multilingual/multi-dataset/xtts_v2
+    networks:
+      - flowquest
+    command: python TTS/server/server.py --model_name tts_models/multilingual/multi-dataset/xtts_v2 --host 0.0.0.0 --port 3000
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+
+networks:
+  flowquest:
+    driver: bridge

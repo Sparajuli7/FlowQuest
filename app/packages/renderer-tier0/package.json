@@ -1,0 +1,23 @@
+{
+  "name": "@flowquest/renderer-tier0",
+  "version": "0.1.0",
+  "description": "Canvas/WebGL compositor for FlowQuest video rendering",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@flowquest/common-schemas": "file:../common-schemas",
+    "canvas": "^2.11.2",
+    "hls.js": "^1.4.12",
+    "three": "^0.158.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/three": "^0.158.0",
+    "typescript": "^5.0.0"
+  }
+}

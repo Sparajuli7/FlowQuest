@@ -1,0 +1,25 @@
+{
+  "name": "flowquest",
+  "version": "0.1.0",
+  "description": "Video-as-a-Primitive: A user plays a video preview, tweaks checkpoints, and exports a Proof Pack",
+  "private": true,
+  "workspaces": [
+    "app/web",
+    "app/packages/*"
+  ],
+  "scripts": {
+    "dev": "make dev",
+    "build": "make build",
+    "test": "make test",
+    "migrate": "make migrate",
+    "seed": "make seed"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}

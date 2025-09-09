@@ -1,0 +1,234 @@
+# Sales Quote Template v1.0.0
+# Video-as-a-Primitive template for generating sales quote presentations
+
+metadata:
+  key: "sales_quote_v1"
+  version: "1.0.0"
+  name: "Sales Quote Explainer"
+  description: "Transform sales proposals into compelling video presentations"
+  category: "Sales"
+  duration_range: [45, 60]
+  author: "FlowQuest"
+  created: "2024-01-01"
+
+# Template inputs (required for generation)
+inputs:
+  - key: "company"
+    type: "string"
+    label: "Company Name"
+    required: true
+    placeholder: "Acme Corporation"
+
+  - key: "budget"
+    type: "currency"
+    label: "Budget"
+    required: true
+    min: 1000
+    max: 1000000
+    default: 15000
+
+  - key: "seats"
+    type: "number"
+    label: "Number of Seats"
+    required: true
+    min: 1
+    max: 10000
+    default: 25
+
+  - key: "region"
+    type: "select"
+    label: "Region"
+    required: true
+    options: ["NA", "EU", "APAC", "LATAM", "MEA"]
+    default: "NA"
+
+  - key: "timeline"
+    type: "date"
+    label: "Implementation Timeline"
+    required: true
+    default: "2024-Q2"
+
+# Checkpoints (user can modify during editing)
+checkpoints:
+  - id: "budget"
+    label: "Budget"
+    type: "currency"
+    min: 1000
+    max: 1000000
+    required: true
+    help: "Total project budget in USD"
+
+  - id: "scope"
+    label: "Project Scope"
+    type: "text"
+    required: true
+    placeholder: "Cloud infrastructure modernization"
+    help: "Brief description of the project scope"
+
+  - id: "timeline"
+    label: "Timeline"
+    type: "select"
+    options: ["2024-Q1", "2024-Q2", "2024-Q3", "2024-Q4", "2025-Q1"]
+    required: true
+    help: "Expected project completion timeline"
+
+  - id: "deliverables"
+    label: "Key Deliverables"
+    type: "multiselect"
+    options: [
+      "Architecture Assessment",
+      "Migration Plan", 
+      "Implementation",
+      "Training",
+      "Support",
+      "Documentation"
+    ]
+    required: true
+    help: "Select all applicable deliverables"
+
+# Shot graph template
+shots:
+  - id: "s1_intro"
+    title: "Company Introduction"
+    duration: 8.0
+    step_dependencies: []
+    scene_type: "title_card"
+    bindings:
+      - key: "company_name"
+        source: "inputs.company"
+      - key: "presenter_name"
+        source: "system.presenter"
+        default: "FlowQuest Solutions"
+    overlays:
+      - type: "title"
+        text: "{{company_name}} - Partnership Proposal"
+        position: "center"
+        animation: "fade_in"
+      - type: "caption"
+        text: "Prepared by {{presenter_name}}"
+        position: "bottom"
+
+  - id: "s2_budget"
+    title: "Budget Breakdown"
+    duration: 12.0
+    step_dependencies: ["budget", "scope"]
+    scene_type: "chart"
+    bindings:
+      - key: "total_budget"
+        source: "checkpoints.budget"
+      - key: "scope_description"
+        source: "checkpoints.scope"
+    overlays:
+      - type: "figure"
+        chart_type: "budget_breakdown"
+        data_source: "computed.budget_allocation"
+      - type: "caption"
+        text: "Total Investment: ${{total_budget | currency}}"
+        position: "bottom"
+
+  - id: "s3_timeline"
+    title: "Implementation Timeline"
+    duration: 10.0
+    step_dependencies: ["timeline", "deliverables"]
+    scene_type: "timeline"
+    bindings:
+      - key: "completion_date"
+        source: "checkpoints.timeline"
+      - key: "deliverables_list"
+        source: "checkpoints.deliverables"
+    overlays:
+      - type: "figure"
+        chart_type: "gantt_timeline"
+        data_source: "computed.project_phases"
+      - type: "title"
+        text: "Project Timeline - {{completion_date}}"
+        position: "top"
+
+  - id: "s4_deliverables"
+    title: "Key Deliverables"
+    duration: 15.0
+    step_dependencies: ["deliverables"]
+    scene_type: "list"
+    bindings:
+      - key: "deliverables"
+        source: "checkpoints.deliverables"
+    overlays:
+      - type: "title"
+        text: "What You'll Receive"
+        position: "top"
+      - type: "caption"
+        text: "{{deliverables | join:', '}}"
+        position: "center"
+
+  - id: "s5_next_steps"
+    title: "Next Steps"
+    duration: 8.0
+    step_dependencies: []
+    scene_type: "call_to_action"
+    bindings:
+      - key: "company_name"
+        source: "inputs.company"
+    overlays:
+      - type: "title"
+        text: "Ready to Get Started?"
+        position: "center"
+      - type: "caption"
+        text: "Let's discuss how we can help {{company_name}} succeed"
+        position: "bottom"
+
+# Shot dependencies (defines rendering order)
+edges:
+  - ["s1_intro", "s2_budget"]
+  - ["s2_budget", "s3_timeline"]
+  - ["s3_timeline", "s4_deliverables"]
+  - ["s4_deliverables", "s5_next_steps"]
+
+# Export templates
+exports:
+  pdf:
+    template: "sales_quote_pdf"
+    sections: ["executive_summary", "budget", "timeline", "deliverables", "terms"]
+    
+  ics:
+    template: "project_timeline_ics"
+    events: ["kickoff", "milestone_checkpoints", "completion"]
+    
+  md:
+    template: "proposal_summary_md"
+    sections: ["overview", "investment", "timeline", "deliverables", "next_steps"]
+    
+  csv:
+    template: "project_data_csv"
+    tables: ["budget_breakdown", "timeline", "deliverables"]
+
+# Validation rules
+validation:
+  - rule: "budget_bounds"
+    message: "Budget must be between $1,000 and $1,000,000"
+    condition: "checkpoints.budget >= 1000 && checkpoints.budget <= 1000000"
+    
+  - rule: "timeline_future"
+    message: "Timeline must be in the future"
+    condition: "checkpoints.timeline > now"
+    
+  - rule: "deliverables_selected"
+    message: "At least one deliverable must be selected"
+    condition: "checkpoints.deliverables.length > 0"
+
+# Computed fields (derived from inputs/checkpoints)
+computed:
+  budget_allocation:
+    implementation: 60
+    training: 20
+    support: 15
+    contingency: 5
+    
+  project_phases:
+    - phase: "Discovery"
+      duration_weeks: 2
+    - phase: "Implementation"
+      duration_weeks: 8
+    - phase: "Testing"
+      duration_weeks: 2
+    - phase: "Go-Live"
+      duration_weeks: 1
