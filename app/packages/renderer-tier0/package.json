@@ -10,12 +10,17 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@flowquest/common-schemas": "file:../common-schemas",
     "canvas": "^2.11.2",
+    "fluent-ffmpeg": "^2.1.3",
     "hls.js": "^1.4.12",
+    "jimp": "^1.6.0",
+    "sharp": "^0.34.3",
     "three": "^0.158.0"
   },
   "devDependencies": {
+    "@types/fluent-ffmpeg": "^2.1.27",
     "@types/node": "^20.0.0",
     "@types/three": "^0.158.0",
     "typescript": "^5.0.0"

@@ -8,6 +8,7 @@ from typing import Dict, Any, List
 import json
 
 from app.core.config import settings
+from app.engines.llm_planner import LLMPlanner
 
 logger = structlog.get_logger()
 
@@ -18,6 +19,7 @@ class PlannerEngine:
     
     def __init__(self):
         self.safe_mode = settings.SAFE_MODE
+        self.llm_planner = LLMPlanner() if not self.safe_mode else None
         
     async def generate_plan(
         self,
@@ -109,6 +111,63 @@ class PlannerEngine:
         """
         Generate plan using LLM (OpenAI/Anthropic).
         """
-        # TODO: Implement LLM-based planning
-        logger.info("Using LLM for planning (not implemented yet)")
-        return await self._generate_safe_mode_plan(template_key, inputs, constraints)
+        logger.info("Using LLM for planning", template=template_key)
+        
+        try:
+            # Generate shot graph using LLM
+            shot_graph = await self.llm_planner.generate_shot_graph(template_key, inputs)
+            
+            # Extract steps from shot graph bindings
+            steps = self._extract_steps_from_shot_graph(shot_graph, inputs)
+            
+            return {
+                "steps": steps,
+                "shot_graph": shot_graph
+            }
+        except Exception as e:
+            logger.error("LLM planning failed, falling back to safe mode", error=str(e))
+            return await self._generate_safe_mode_plan(template_key, inputs, constraints)
+    
+    def _extract_steps_from_shot_graph(self, shot_graph: Dict[str, Any], inputs: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """
+        Extract step definitions from shot graph bindings.
+        """
+        steps = []
+        
+        # Collect all unique binding keys from shots
+        binding_keys = set()
+        for shot in shot_graph.get("shots", []):
+            bindings = shot.get("bindings", {})
+            binding_keys.update(bindings.keys())
+        
+        # Create steps for each binding key
+        for key in binding_keys:
+            step = {
+                "id": key,
+                "label": key.replace("_", " ").title(),
+                "type": self._infer_step_type(key, inputs.get(key)),
+                "required": True,
+                "value": inputs.get(key)
+            }
+            steps.append(step)
+        
+        return steps
+    
+    def _infer_step_type(self, key: str, value: Any) -> str:
+        """
+        Infer step type from key name and value.
+        """
+        if "budget" in key.lower() or "cost" in key.lower() or "price" in key.lower():
+            return "currency"
+        elif "date" in key.lower() or "time" in key.lower():
+            return "date"
+        elif "email" in key.lower():
+            return "url"
+        elif isinstance(value, list):
+            return "multiselect"
+        elif isinstance(value, bool):
+            return "select"
+        elif isinstance(value, (int, float)):
+            return "number"
+        else:
+            return "text"
